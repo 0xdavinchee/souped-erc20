@@ -22,7 +22,7 @@ task("accounts", "Prints the list of accounts", async (_args, hre) => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 const config: HardhatUserConfig = {
-  solidity: "0.7.3",
+  solidity: "0.8.0",
   namedAccounts: {
     deployer: 0
   }
