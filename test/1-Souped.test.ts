@@ -63,27 +63,124 @@ describe("Souped", () => {
       );
       const sendTokenAmount = getNumber(SEND_TOKEN_AMOUNT);
       expect(user0Balance).to.equal(sendTokenAmount);
-      expect(deployerBalance).to.equal(SoupedObj.Supply - sendTokenAmount)
+      expect(deployerBalance).to.equal(SoupedObj.Supply - sendTokenAmount);
     });
 
-    it("Should not allow transfer without approval.", async () => {
+    it("Should not allow transferFrom without approval.", async () => {
       const { deployer, Souped, users } = await setup();
-      Souped.approve(users[0].address, 100);
-      // expect();
+      const SEND_TOKEN_AMOUNT = ethers.utils.parseUnits("100");
+      expect(
+        Souped.transferFrom(
+          deployer.address,
+          users[0].address,
+          SEND_TOKEN_AMOUNT
+        )
+      ).to.be.revertedWith("ERC20: transfer amount exceeds allowance");
     });
 
-    // it("Should not allow transfer without approval.", async () => {
-    //   const { deployer, Souped, users } = await setup();
-    //   Souped.approve(users[0].address, 100);
-    //   expect();
-    // });
+    it("Should allow transferFrom with approval.", async () => {
+      const { deployer, Souped, users } = await setup();
+      const SEND_TOKEN_AMOUNT = ethers.utils.parseUnits("100");
+      const approvalTxn = deployer.Souped.approve(
+        users[0].address,
+        SEND_TOKEN_AMOUNT
+      );
+      await approvalTxn;
+
+      expect(approvalTxn)
+        .to.emit(Souped, "Approval")
+        .withArgs(deployer.address, users[0].address, SEND_TOKEN_AMOUNT);
+
+      expect(
+        users[0].Souped.transferFrom(
+          deployer.address,
+          users[0].address,
+          SEND_TOKEN_AMOUNT
+        )
+      )
+        .to.emit(Souped, "Transfer")
+        .withArgs(deployer.address, users[0].address, SEND_TOKEN_AMOUNT);
+
+      expect(getNumber(await Souped.balanceOf(users[0].address))).to.equal(
+        getNumber(SEND_TOKEN_AMOUNT)
+      );
+    });
+
+    it("Should be able to increase allowance.", async () => {
+      const { deployer, Souped, users } = await setup();
+      const SEND_TOKEN_AMOUNT = ethers.utils.parseUnits("100");
+      const increaseAllowance = Souped.increaseAllowance(
+        users[0].address,
+        SEND_TOKEN_AMOUNT
+      );
+      await increaseAllowance;
+
+      expect(increaseAllowance)
+        .to.emit(Souped, "Approval")
+        .withArgs(deployer.address, users[0].address, SEND_TOKEN_AMOUNT);
+
+      expect(
+        users[0].Souped.transferFrom(
+          deployer.address,
+          users[0].address,
+          SEND_TOKEN_AMOUNT
+        )
+      )
+        .to.emit(Souped, "Transfer")
+        .withArgs(deployer.address, users[0].address, SEND_TOKEN_AMOUNT);
+
+      expect(getNumber(await Souped.balanceOf(users[0].address))).to.equal(
+        getNumber(SEND_TOKEN_AMOUNT)
+      );
+    });
   });
 
-  describe("ERC20Burnable", () => {});
+  describe("ERC20Burnable", () => {
+    it("Should be able to burn tokens", async () => {
+      const { deployer, Souped, users } = await setup();
+      const BURN_TOKEN_AMOUNT = ethers.utils.parseUnits("100");
+      const FINAL_SUPPLY = ethers.utils.parseUnits(
+        String(SoupedObj.Supply - 100)
+      );
+      await expect(Souped.burn(BURN_TOKEN_AMOUNT))
+        .to.emit(Souped, "Transfer")
+        .withArgs(
+          deployer.address,
+          ethers.constants.AddressZero,
+          BURN_TOKEN_AMOUNT
+        );
+      expect(await Souped.totalSupply()).to.equal(FINAL_SUPPLY);
+    });
 
-  describe("ERC20Capped", () => {});
+    it("Should be able to burnFrom.", async () => {
+      const { deployer, Souped, users } = await setup();
+      const BURN_TOKEN_AMOUNT = ethers.utils.parseUnits("100");
+      const increaseAllowance = Souped.increaseAllowance(
+        users[0].address,
+        BURN_TOKEN_AMOUNT
+      );
+      await increaseAllowance;
 
-  describe("ERC20Pausable", () => {});
+      expect(increaseAllowance)
+        .to.emit(Souped, "Approval")
+        .withArgs(deployer.address, users[0].address, BURN_TOKEN_AMOUNT);
+
+      expect(users[0].Souped.burnFrom(deployer.address, BURN_TOKEN_AMOUNT))
+        .to.emit(Souped, "Transfer")
+        .withArgs(
+          deployer.address,
+          ethers.constants.AddressZero,
+          BURN_TOKEN_AMOUNT
+        );
+    });
+  });
+
+  describe("ERC20Pausable", () => {
+    it("Should be paused.", async () => {
+      const { Souped } = await setup();
+      expect(await Souped.paused()).to.equal(false);
+    });
+  });
 
   describe("ERC20Snapshot", () => {});
 });

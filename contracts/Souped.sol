@@ -20,7 +20,10 @@ contract Souped is
         string memory _symbol,
         uint256 _amount,
         uint256 _cappedAmount
-    ) ERC20Capped(_cappedAmount * 10**uint256(decimals())) ERC20(_name, _symbol) {
+    )
+        ERC20Capped(_cappedAmount * 10**uint256(decimals()))
+        ERC20(_name, _symbol)
+    {
         ERC20._mint(msg.sender, _amount * 10**uint256(decimals()));
     }
 
